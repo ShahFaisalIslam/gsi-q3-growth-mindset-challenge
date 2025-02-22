@@ -5,7 +5,9 @@ import os
 from io import BytesIO
 
 # Downloader
-def downloader(df):
+def downloader(df,file):
+    columns = st.multiselect("Select columns to keep for conversion:",df.columns,default=df.columns)
+    df = df[columns]
     buffer = BytesIO()
     # Ask the format for conversion
     format = st.radio("Convert file to",["CSV","Excel"])
@@ -52,33 +54,21 @@ if uploaded_files:
 **Name:** {file.name}
 **Size:** {file.size} B
 """)
-        # Choose between tools
-        option = st.radio("Select Tool:",["File Format Conversion","Data Cleaning"])
-        if option:
-            # Data Cleaning Tools
-            if option == "Data Cleaning":
-                [col1,col2] = st.columns(2)
+        [col1,col2] = st.columns(2)
 
-                # Remove Duplicates
-                with col1:
-                    if st.button("Remove Duplicates"):
-                        df.drop_duplicates(inplace=True)
-                        st.write("Duplicates Removed!")
-                        downloader(df)
+        # Remove Duplicates
+        with col1:
+            if st.button("Remove Duplicates"):
+                df.drop_duplicates(inplace=True)
+                st.write("Duplicates Removed!")
+                downloader(df,file)
 
-                with col2:
-                    if st.button("Fill Missing Data"):
-                        numeric_cols = df.select_dtypes(include='number').columns
-                        df[numeric_cols] = df[numeric_cols].fillna(round(df[numeric_cols].mean()))
-                        st.write("Missing Data Filled!")
-                        downloader(df)
-
-            # File Conversion
-            elif option == "File Format Conversion":
-                # Select columns to keep for conversion
-                columns = st.multiselect("Select columns to keep for conversion:",df.columns,default=df.columns)
-                df = df[columns]
-                downloader(df)
+        with col2:
+            if st.button("Fill Missing Data"):
+                numeric_cols = df.select_dtypes(include='number').columns
+                df[numeric_cols] = df[numeric_cols].fillna(round(df[numeric_cols].mean()))
+                st.write("Missing Data Filled!")
+                downloader(df,file)
                     
                 
         # Visualization
