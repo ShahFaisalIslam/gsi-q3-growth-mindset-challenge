@@ -4,23 +4,64 @@ import pandas as pd
 import os
 from io import BytesIO
 
-# Downloader
-def downloader(df,file):
-    columns = st.multiselect("Select columns to keep for conversion:",df.columns,default=df.columns)
-    df = df[columns]
-    buffer = BytesIO()
-    # Ask the format for conversion
-    format = st.radio("Convert file to",["CSV","Excel"])
-    if format:
-        if format == "CSV":
-            df.to_csv(buffer,index=False)
-            file_name = file.name.replace(file_ext,".csv")
+# Object containing file data including the following:
+# * File object
+# * File data
+class FileData:
+    def __init__(self,file):
+        self.file = file
+        self.file_ext = os.path.splitext(self.file.name)[-1].lower()
+        if self.file_ext == ".csv":
+            self.df = pd.read_csv(self.file)
+        else: # Only csv or xlsx comes from file uploader
+            self.df = pd.read_excel(self.file)
+
+    # Print file statistics
+    def print_stats(file_data):
+        st.write(f"""
+**Name:** {file_data.file.name}
+
+**Size:** {file_data.file.size} B
+
+""")
+
+    # Remove duplicates from data
+    def remove_duplicates(file_data):
+        file_data.df.drop_duplicates(inplace=True)
+        st.write("Duplicates Removed!")
+
+    # Fill missing data (only numeric data is filled)
+    def fill_missing_data(file_data):
+        numeric_cols = file_data.df.select_dtypes(include='number').columns
+        file_data.df[numeric_cols] = file_data.df[numeric_cols].fillna(round(file_data.df[numeric_cols].mean()))
+        st.write("Missing Data Filled!")
+
+    # Visualize Data as follows:
+    # * First five rows
+    # * Bar chart of name and age
+    def visualize_data(file_data):
+        st.subheader(f"Visualization of {file_data.file.name}:")
+        # First five rows of data
+        st.write(f"First five rows")
+        st.dataframe(file_data.df.head())
+        # Bar Chart
+        st.bar_chart(file_data.df[["name","age"]],x="name")
+
+
+    # Download file
+    def download_file(self,file_name=None):
+        buffer = BytesIO()
+        # Prepare download according to format
+        if self.file_ext == ".csv":
+            self.df.to_csv(buffer,index=False)
             mime_type = "text/csv"
 
-        elif format == "Excel":
-            df.to_excel(buffer,index=False)
-            file_name = file.name.replace(file_ext,".xlsx")
+        elif self.file_ext == ".xlsx":
+            self.df.to_excel(buffer,index=False)
             mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+        if not file_name:
+            file_name = file.name
 
         st.download_button(
             label=f"Download {file_name}",
@@ -28,6 +69,20 @@ def downloader(df,file):
             file_name=file_name,
             mime=mime_type)
 
+    def convert_file(self):
+        columns = st.multiselect("Select columns to keep for conversion:",self.df.columns,default=self.df.columns)
+        self.df = self.df[columns]
+        buffer = BytesIO()
+        # Ask the format for conversion
+        format = st.radio("Convert file to",["CSV","Excel"])
+        if format:
+            if format == "CSV":
+                file_name = file.name.replace(self.file_ext,".csv")
+
+            elif format == "Excel":
+                file_name = file.name.replace(self.file_ext,".xlsx")
+
+            self.download_file(file_name)
 
 # App Setup
 title = "Data Sweeper"
@@ -38,43 +93,39 @@ st.write("Convert file between CSV and Excel formats, with built-in data visuali
 
 uploaded_files = st.file_uploader("Upload CSV or Excel file:",type=["csv","xlsx"],accept_multiple_files=True)
 
+id = 0
+
 if uploaded_files:
     for file in uploaded_files:
-        # Load data frame
-        file_ext = os.path.splitext(file.name)[-1].lower()
-        if file_ext == ".csv":
-            df = pd.read_csv(file)
-        elif file_ext == ".xlsx":
-            df = pd.read_excel(file)
-        else:
-            st.error("Incorrect file format")
-        
-        # File statistics
-        print(f"""
-**Name:** {file.name}
-**Size:** {file.size} B
-""")
-        [col1,col2] = st.columns(2)
+        id += 1
+        # Load file into FileData object
+        file_data = FileData(file)
 
-        # Remove Duplicates
-        with col1:
-            if st.button("Remove Duplicates"):
-                df.drop_duplicates(inplace=True)
-                st.write("Duplicates Removed!")
-                downloader(df,file)
 
-        with col2:
-            if st.button("Fill Missing Data"):
-                numeric_cols = df.select_dtypes(include='number').columns
-                df[numeric_cols] = df[numeric_cols].fillna(round(df[numeric_cols].mean()))
-                st.write("Missing Data Filled!")
-                downloader(df,file)
-                    
-                
-        # Visualization
-        st.subheader(f"Visualization of {file.name}:")
-        # First five rows of data
-        st.write(f"First five rows")
-        st.dataframe(df.head())
-        # Bar Chart
-        st.bar_chart(df[["name","age"]],x="name")
+        # Print file statistics from file data
+        file_data.print_stats()        
+
+        st.subheader("Tools")
+        option = st.radio("Choose between",["Data Cleaning","File Conversion"],horizontal=True)
+
+        if option:
+            if option == "Data Cleaning":
+                [col1,col2] = st.columns(2)
+
+                # Remove Duplicates
+                with col1:
+                    if st.button("Remove Duplicates",key=f"{id}-remdup"):
+                        file_data.remove_duplicates()
+                        file_data.download_file()
+
+                # Fill Missing Data
+                with col2:
+                    if st.button("Fill Missing Data",key=f"{id}-fillna"):
+                        file_data.fill_missing_data()
+                        file_data.download_file()
+                            
+            else:
+                file_data.convert_file()
+
+            # Visualization
+            file_data.visualize_data()
