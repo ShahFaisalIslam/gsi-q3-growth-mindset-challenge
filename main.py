@@ -67,7 +67,8 @@ class FileData:
             label=f"Download {file_name}",
             data=buffer,
             file_name=file_name,
-            mime=mime_type)
+            mime=mime_type,
+            key=file_name)
 
     def convert_file(self):
         columns = st.multiselect("Select columns to keep for conversion:",self.df.columns,default=self.df.columns)
@@ -93,6 +94,7 @@ st.write("Convert file between CSV and Excel formats, with built-in data visuali
 
 uploaded_files = st.file_uploader("Upload CSV or Excel file:",type=["csv","xlsx"],accept_multiple_files=True)
 
+# Needed to separate buttons for each file
 id = 0
 
 if uploaded_files:
