@@ -4,11 +4,16 @@ import pandas as pd
 import os
 from io import BytesIO
 
+latest_file_id = 0
+
 # Object containing file data including the following:
 # * File object
 # * File data
 class FileData:
     def __init__(self,file):
+        global latest_file_id
+        latest_file_id += 1
+        self.id = latest_file_id
         self.file = file
         self.file_ext = os.path.splitext(self.file.name)[-1].lower()
         if self.file_ext == ".csv":
@@ -68,14 +73,17 @@ class FileData:
             data=buffer,
             file_name=file_name,
             mime=mime_type,
-            key=file_name)
+            key=f"{self.id}-download")
 
     def convert_file(self):
-        columns = st.multiselect("Select columns to keep for conversion:",self.df.columns,default=self.df.columns)
+        columns = st.multiselect("Select columns to keep for conversion:",
+                                 self.df.columns,
+                                 default=self.df.columns,
+                                 key=f"{self.id}-column-sel")
         self.df = self.df[columns]
         buffer = BytesIO()
         # Ask the format for conversion
-        format = st.radio("Convert file to",["CSV","Excel"])
+        format = st.radio("Convert file to",["CSV","Excel"],key=f"{self.id}-convert-choice")
         if format:
             if format == "CSV":
                 file_name = file.name.replace(self.file_ext,".csv")
@@ -94,12 +102,9 @@ st.write("Convert file between CSV and Excel formats, with built-in data visuali
 
 uploaded_files = st.file_uploader("Upload CSV or Excel file:",type=["csv","xlsx"],accept_multiple_files=True)
 
-# Needed to separate buttons for each file
-id = 0
-
 if uploaded_files:
     for file in uploaded_files:
-        id += 1
+
         # Load file into FileData object
         file_data = FileData(file)
 
@@ -108,7 +113,10 @@ if uploaded_files:
         file_data.print_stats()        
 
         st.subheader("Tools")
-        option = st.radio("Choose between",["Data Cleaning","File Conversion"],horizontal=True)
+        option = st.radio("Choose between",["Data Cleaning",
+                                            "File Conversion"],
+                                            key=f"{file_data.id}-tool-choice",
+                                            horizontal=True)
 
         if option:
             if option == "Data Cleaning":
@@ -116,13 +124,13 @@ if uploaded_files:
 
                 # Remove Duplicates
                 with col1:
-                    if st.button("Remove Duplicates",key=f"{id}-remdup"):
+                    if st.button("Remove Duplicates",key=f"{file_data.id}-remdup"):
                         file_data.remove_duplicates()
                         file_data.download_file()
 
                 # Fill Missing Data
                 with col2:
-                    if st.button("Fill Missing Data",key=f"{id}-fillna"):
+                    if st.button("Fill Missing Data",key=f"{file_data.id}-fillna"):
                         file_data.fill_missing_data()
                         file_data.download_file()
                             
