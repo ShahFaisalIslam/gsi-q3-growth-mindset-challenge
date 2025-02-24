@@ -120,6 +120,7 @@ if uploaded_files:
 
         if option:
             if option == "Data Cleaning":
+                st.write("_Note: Only one tool is effective on data at a time._")
                 [col1,col2] = st.columns(2)
 
                 # Remove Duplicates
