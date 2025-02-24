@@ -45,7 +45,7 @@ class FileData:
         st.write(f"First five rows")
         st.dataframe(file_data.df.head())
         # Bar Chart
-        st.bar_chart(file_data.df[["name","age"]],x="name")
+        st.bar_chart(file_data.df[file_data.df.columns[0:2]],x=file_data.df.columns[0],y_label=file_data.df.columns[1])
 
 
     # Download file
